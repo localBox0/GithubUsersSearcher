@@ -1,10 +1,25 @@
 import React, {useEffect, useState} from 'react'
 import s from './github.module.css'
 import axios from "axios";
+import {
+    Avatar,
+    List,
+    Button,
+    Box,
+    ListItemButton,
+    TextField,
+    Typography,
+    Card,
+    CardMedia,
+    CardContent
+} from "@mui/material";
+import TimelapseIcon from '@mui/icons-material/Timelapse';
+import Paginator from "./Paginator";
 
 type SearchUserType = {
     login: string
     id: number
+    avatar_url?: string
 }
 type SearchResult = {
     items: SearchUserType[]
@@ -28,13 +43,18 @@ export const Search = (props: SearchPropsType) => {
     }, [props.value])
 
     return (
-        <div>
-            <input placeholder='Search...' value={tempSearch}
-                   onChange={(e) => {setTempSearch(e.currentTarget.value)}}/>
-            <button onClick={() => {
+        <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+        }}>
+            <TextField id="outlined-basic" label="Search here..." variant="outlined" size="small" value={tempSearch}
+                       onChange={(e) => {
+                           setTempSearch(e.currentTarget.value)
+                       }}/>
+            <Button onClick={() => {
                 props.onSubmit(tempSearch)
-            }}>Find</button>
-        </div>
+            }} variant="outlined">Find</Button>
+        </Box>
     )
 }
 
@@ -45,21 +65,41 @@ type UsersListPropsType = {
 }
 export const UsersList = (props: UsersListPropsType) => {
     const [users, setUsers] = useState<SearchUserType[]>([])
+    const [page, setPage] = React.useState(1);
+    const usersPerPage = 5
+    const count = Math.ceil(users.length / usersPerPage)
+    const lastUserIndex = page * usersPerPage
+    const firstUsersIndex = lastUserIndex - usersPerPage
+    let currentUsers = [...users].slice(firstUsersIndex, lastUserIndex)
+    const handleChange = (event: React.ChangeEvent<unknown>, value: number) => {
+        setPage(value);
+    };
+
     useEffect(() => {
         axios
             .get<SearchResult>(`https://api.github.com/search/users?q=${props.term}`)
-            .then(res=> {
+            .then(res => {
                 setUsers(res.data.items)
             })
     }, [props.term])
 
     return (
-        <ul>
-            {users.map(u => <li key={u.id} className={props.selectedUser === u ? s.selected : ''} onClick={() => {
-                props.onUserSelect(u)
-            }}>
-                {u.login}</li>)}
-        </ul>
+        <div>
+            <List>
+                {currentUsers.map(u =>
+
+                    <ListItemButton key={u.id} className={props.selectedUser === u ? s.selected : ''} onClick={() => {
+                        props.onUserSelect(u)
+                    }}>
+                        <Avatar
+                            alt={`Avatar n°${u.id}`}
+                            src={u.avatar_url}
+                        />
+                        {u.login}</ListItemButton>)}
+
+            </List>
+            <Paginator page={page} count={count} handleChange={handleChange}/>
+        </div>
     )
 }
 
@@ -73,7 +113,7 @@ export const Timer = (props: TimerPropsType) => {
     useEffect(() => {
         setSeconds(props.seconds)
     }, [props.seconds])
-    useEffect(()=> {
+    useEffect(() => {
         props.onChange(seconds)
     }, [seconds])
     useEffect(() => {
@@ -82,10 +122,19 @@ export const Timer = (props: TimerPropsType) => {
             setSeconds((prev) => prev - 1)
         }, 1000)
 
-        return () => {clearInterval(intervalId)}
+        return () => {
+            clearInterval(intervalId)
+        }
     }, [props.timerKey])
 
-    return <div>{seconds}</div>
+    return <Box>
+        <Typography variant="h5" gutterBottom sx={{
+            display: 'flex',
+            alignItems: 'center',
+        }}>
+            <TimelapseIcon color="primary"/> {seconds}
+        </Typography>
+    </Box>
 }
 
 type UserDetailsPropsType = {
@@ -99,10 +148,11 @@ export const UserDetails = (props: UserDetailsPropsType) => {
         if (!!props.user) {
             axios
                 .get<UserType>(`https://api.github.com/users/${props.user.login}`)
-                .then(res=> {
+                .then(res => {
                     setSeconds(startTimerSeconds)
                     setUserDetails(res.data)
-                })}
+                })
+        }
     }, [props.user])
     useEffect(() => {
         if (seconds < 1) {
@@ -110,13 +160,24 @@ export const UserDetails = (props: UserDetailsPropsType) => {
         }
     }, [seconds])
     return <div>
-            {userDetails && <div>
-                <Timer seconds={seconds} onChange={setSeconds} timerKey={userDetails.id}/>
-                <h2>{userDetails.login}</h2>
-                <img src={userDetails.avatar_url}/>
-                <br/>
-                {userDetails.login}, followers: {userDetails.followers}
-            </div>}
+        {userDetails && <div>
+            <Card sx={{width: 400}}>
+                <CardContent>
+                    <Timer seconds={seconds} onChange={setSeconds} timerKey={userDetails.id}/>
+                    <Typography variant="h4" gutterBottom>
+                        {userDetails.login}
+                    </Typography>
+                    <CardMedia
+                        sx={{height: 400}}
+                        image={userDetails.avatar_url}
+                        title={userDetails.login}
+                    />
+                    <Typography variant="h6" gutterBottom>
+                        Followers: {userDetails.followers}
+                    </Typography>
+                </CardContent>
+            </Card>
+        </div>}
     </div>
 }
 
@@ -128,16 +189,23 @@ export const Github = () => {
 
     useEffect(() => {
         if (selectedUser) {
-        document.title = selectedUser.login
+            document.title = selectedUser.login
         }
     }, [selectedUser])
 
     return <div className={s.container}>
         <div>
-            <Search value={searchTerm} onSubmit={(value: string) => {setSearchTerm(value)}}/>
-            <button onClick={() => setSearchTerm(initialSearchState)}>Reset</button>
-            <UsersList term={searchTerm} selectedUser={selectedUser} onUserSelect={setSelectedUser} />
+            <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+            }}>
+                <Search value={searchTerm} onSubmit={(value: string) => {
+                    setSearchTerm(value)
+                }}/>
+                <Button variant="contained" onClick={() => setSearchTerm(initialSearchState)}>Reset</Button>
+            </Box>
+            <UsersList term={searchTerm} selectedUser={selectedUser} onUserSelect={setSelectedUser}/>
         </div>
-        <UserDetails user={selectedUser} />
+        <UserDetails user={selectedUser}/>
     </div>
 }
