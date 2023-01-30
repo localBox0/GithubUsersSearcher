@@ -1,9 +1,11 @@
 .container {
     display: flex;
+    background-color: lightgoldenrodyellow;
+    height: 100vh;
 }
 
 .container div {
-    padding: 10px;
+    padding: 9px;
 }
 
 .selected {
